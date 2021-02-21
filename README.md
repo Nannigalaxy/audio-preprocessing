@@ -1,4 +1,4 @@
-# audio-preprocessing
+# audio-preprocessing-tool
 Audio preprocessing tool for signal processing and machine learning applications.
 
 ### Features
