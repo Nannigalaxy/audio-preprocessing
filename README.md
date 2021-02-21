@@ -28,8 +28,7 @@ Audio preprocessing tool for signal processing and machine learning applications
 Category: yes, no, ...  
 Background: .background (Need to have same directory name for background as it is hardcoded)
 
-### Example
-#### Usage:
+### Example:
 ```
 from audio_preprocess import get_dataset
 
