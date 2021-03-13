@@ -12,7 +12,7 @@ import librosa
 np.random.seed(2)
 
 
-def load_audio_data(data_path, samples, sampling_rate):
+def load_audio_data(data_path, samples, seconds, sampling_rate, background):
 	'''
 	function to load data from each folder and as classnames
 	'''
@@ -24,10 +24,18 @@ def load_audio_data(data_path, samples, sampling_rate):
 	path = data_path # dataset path 
 	dirs = os.listdir(path)
 	dirs.sort()
-	# read all directory except background (.background) directory
-	dirs = dirs[1:]
+	# read all directory except background noise(.background) directory if false
+	if background:
+		# load n second length background noise audio and split to desired length 
+		bg_data = load_bg(path, sampling_rate)
+		bg_chunks = split_bg(bg_data, seconds, sampling_rate)
+		bg_chunks = bg_chunks[:limit]
+		labels.extend([0]*len(bg_chunks))
+		data.extend(bg_chunks.tolist())
+		category.extend(["background"]*len(bg_chunks))
+		files.extend(['N/A']*len(bg_chunks))
 	t=0
-	for folder in dirs:
+	for folder in dirs[1:]:
 		c=0
 		for filename in os.listdir(path+folder):
 			l = np.zeros(len(dirs))
@@ -67,7 +75,8 @@ def split_bg(bg, seconds, sampling_rate):
 	bg_split = []
 	for x in range(len(bg)):
 		for i in range(0, len(bg[x]), max_length):
-			chunk = bg[0][i:i + max_length]
+			chunk = bg[x][i:i + max_length]
+			# print(len(chunk))
 			bg_split.append(chunk)
 
 			# create folders manually and save audio chunks 
@@ -123,12 +132,12 @@ def shift_audio(data, sampling_rate, shift_max, shift_direction):
 	return augmented_data
 
 
-def augment_audio(row, bg, sampling_rate, max_length):
+def augment_audio(df_row, bg, sampling_rate, max_length):
 	''' 
 	augment voice audio and overlap with background
 	'''
 	bg_audio = get_random_bg(bg, max_length)
-	audio = np.array(row.audio)
+	audio = np.array(df_row.audio)
 	# audio.resize(bg_audio.shape)
 
 	# shift time left or right
@@ -151,11 +160,11 @@ def augment_audio(row, bg, sampling_rate, max_length):
 
 	return aug_audio
 
-def audio_synthesis(path, sampling_rate, sample_limit, max_length, random_factor):
+def audio_synthesis(path, sampling_rate, sample_limit, seconds, max_length, random_factor, background):
 	'''
 	Load raw dataset and background
 	'''
-	audio_data, files, label, category = load_audio_data(path, sample_limit, sampling_rate)
+	audio_data, files, label, category = load_audio_data(path, sample_limit, seconds, sampling_rate, background)
 	data_dict = {'file':files,'audio':audio_data,'label':label,'category':category}
 	dataset = pd.DataFrame(data_dict)
 	classname = dataset.category.unique()
@@ -198,12 +207,12 @@ def audio2mfcc(audio, mfcc_max_length, MFCC_NUM, SAMPLING_RATE):
 	
 	return mfcc
 
-def get_dataset(path, sampling_rate, mfcc_num, mfcc_max_length, seconds, sample_limit, random_factor):
+def get_dataset(path, sampling_rate, mfcc_num, mfcc_max_length, seconds, sample_limit, random_factor, background=True):
 	'''
 	get X, Y and dataframe of dataset
 	'''
 	max_length = sampling_rate * seconds
-	ds = audio_synthesis(path, sampling_rate, sample_limit, max_length, random_factor)
+	ds = audio_synthesis(path, sampling_rate, sample_limit, seconds, max_length, random_factor, background)
 
 	x = [audio2mfcc(audio, mfcc_max_length, mfcc_num, sampling_rate) for audio in np.array(ds.audio)]
 	x = np.array(x)
